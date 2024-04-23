@@ -7,6 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+
 )
 
 // APIClient defines the methods required for interacting with the Prometheus API.
@@ -82,8 +83,9 @@ func FetchMemoryUsage() (string, error) {
 }
 
 // FetchDBConnections fetches DB connection metrics.
-func FetchDBConnections(apiClient APIClient) (string, error) {
-	query := `database_connections{instance="hello-app.hello-app-namespace.svc.cluster.local:80", job="hello-app"}`
+func FetchDBConnections(job_name string, namespace string, apiClient APIClient) (string, error) {
+
+	query := fmt.Sprintf(`database_connections{instance="%s.%s.svc.cluster.local:80", job="%s"}`, job_name, namespace, job_name)
 
 	// Execute the query
 	result, warnings, err := apiClient.Query(context.Background(), query, time.Now())

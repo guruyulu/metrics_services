@@ -45,6 +45,11 @@ func GetMemoryUsageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetDBConnectionsHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	query := r.URL.Query()
+	namespace := query.Get("namespace")
+	jobName := query.Get("job_name")
+
 	// Configure Prometheus API client
 	client, err := api.NewClient(api.Config{
 		Address: "http://localhost:9090", // Replace with your Prometheus server address
@@ -58,7 +63,7 @@ func GetDBConnectionsHandler(w http.ResponseWriter, r *http.Request) {
 	apiClient := services.NewPrometheusAPIClient(v1.NewAPI(client))
 
 	// Delegate the logic to services
-	result, err := services.FetchDBConnections(apiClient)
+	result, err := services.FetchDBConnections(jobName, namespace, apiClient) // Corrected order of parameters
 	if err != nil {
 		http.Error(w, "Failed to fetch DB connections", http.StatusInternalServerError)
 		return
