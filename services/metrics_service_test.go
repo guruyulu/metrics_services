@@ -16,7 +16,10 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("CPU metrics data fetched, but DB metrics is not fetched", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "my_counter", time.Now()).Return(nil, nil, errors.New("failed to fetch DB metrics"))
+		expectedTime := time.Now() // Capture the current time for the test
+
+		// Expect the Query method to be called with the captured time
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", expectedTime).Return(nil, nil, errors.New("failed to fetch DB metrics"))
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
