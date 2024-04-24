@@ -16,9 +16,8 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("CPU metrics data fetched, but DB metrics is not fetched", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		expectedTime := time.Now() // Capture the current time for the test
+		expectedTime := time.Now() 
 
-		// Expect the Query method to be called with the captured time
 		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", expectedTime).Return(nil, nil, errors.New("failed to fetch DB metrics"))
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
@@ -30,7 +29,7 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("CPU metrics data not fetched, but DB metrics is not fetched", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "cpu_query", time.Now()).Return(nil, nil, errors.New("failed to fetch CPU metrics"))
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("failed to fetch CPU metrics"))
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
@@ -41,7 +40,7 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("CPU metrics data fetched, and DB metrics also fetched", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "cpu_query", time.Now()).Return(nil, nil, nil)
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, nil)
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
@@ -52,7 +51,7 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("CPU metrics data not fetched, but DB metrics is fetched", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "cpu_query", time.Now()).Return(nil, nil, errors.New("failed to fetch CPU metrics"))
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("failed to fetch CPU metrics"))
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
@@ -63,7 +62,7 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("Wrong format data received", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "cpu_query", time.Now()).Return(nil, nil, errors.New("wrong format data received"))
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("wrong format data received"))
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
@@ -74,7 +73,7 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("Timeout while fetching data - server error", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "cpu_query", time.Now()).Return(nil, nil, errors.New("timeout while fetching data"))
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("timeout while fetching data"))
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
@@ -85,7 +84,7 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("Nil condition handle", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "cpu_query", time.Now()).Return(nil, nil, nil)
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, nil)
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
@@ -96,11 +95,41 @@ func TestFetchCPUMetrics(t *testing.T) {
 	t.Run("Connection refused", func(t *testing.T) {
 		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "cpu_query", time.Now()).Return(nil, nil, errors.New("connection refused"))
+		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("connection refused"))
 
 		result, err := services.FetchCPUMetrics(mockAPIClient)
 
 		assert.Error(t, err, "Expected error when connection refused")
 		assert.Empty(t, result, "Expected empty result when connection refused")
+	})
+}
+
+func TestFetchDBConnections(t *testing.T) {
+	t.Run("DB metrics data fetched successfully", func(t *testing.T) {
+		mockAPIClient := &mocks.APIClient{}
+
+		jobName := "hello-app"
+		namespace := "hello-app-namespace"
+
+		mockAPIClient.On("Query", context.Background(), "database_connections{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, nil)
+
+		result, err := services.FetchDBConnections(jobName, namespace, mockAPIClient)
+
+		assert.NoError(t, err, "Expected no error when DB metrics fetch succeeds")
+		assert.NotEmpty(t, result, "Expected non-empty result when DB metrics fetch succeeds")
+	})
+
+	t.Run("DB metrics data not fetched", func(t *testing.T) {
+		mockAPIClient := &mocks.APIClient{}
+
+		jobName := "hello-app"
+		namespace := "hello-app-namespace"
+
+		mockAPIClient.On("Query", context.Background(), "database_connections{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("failed to fetch DB metrics"))
+
+		result, err := services.FetchDBConnections(jobName, namespace, mockAPIClient)
+
+		assert.Error(t, err, "Expected error when DB metrics fetch fails")
+		assert.Empty(t, result, "Expected empty result when DB metrics fetch fails")
 	})
 }
