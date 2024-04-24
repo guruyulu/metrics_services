@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/prometheus/client_golang/api/prometheus/v1"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-
 )
 
 type APIClient interface {
@@ -26,10 +25,9 @@ func (c *PrometheusAPIClient) Query(ctx context.Context, query string, ts time.T
 	return c.api.Query(ctx, query, ts)
 }
 
-func FetchCPUMetrics(apiClient APIClient) (string, error) {
-	query := `my_counter{instance="hello-app.hello-app-namespace.svc.cluster.local:80", job="hello-app"}`
+func FetchCPUMetrics(jobName string, namespace string, apiClient APIClient) (string, error) {
+	query := fmt.Sprintf(`my_counter{instance="%s.%s.svc.cluster.local:80", job="%s"}`, jobName, namespace, jobName)
 
-	
 	result, warnings, err := apiClient.Query(context.Background(), query, time.Now())
 	if err != nil {
 		return "", err
@@ -78,10 +76,9 @@ func calculateDB_Connections(vector model.Vector) float64 {
 			count++
 		}
 	}
-	
 
 	if count > 0 {
-		
+
 		return sum / float64(count)
 	}
 
