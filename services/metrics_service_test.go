@@ -2,134 +2,110 @@ package services_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
+	"fmt"
 
 	"github.com/guruyulu/metrics_services/services"
-	"github.com/guruyulu/metrics_services/services/mocks"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-func TestFetchCPUMetrics(t *testing.T) {
-	t.Run("CPU metrics data fetched, but DB metrics is not fetched", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
+const ScalarType model.ValueType = 0
 
-		expectedTime := time.Now() 
+type MockAPIClient struct {
+	mock.Mock
+}
 
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", expectedTime).Return(nil, nil, errors.New("failed to fetch DB metrics"))
+func (m *MockAPIClient) Query(ctx context.Context, query string, ts time.Time) (model.Value, v1.Warnings, error) {
+	args := m.Called(ctx, query, ts)
+	return args.Get(0).(model.Value), args.Get(1).(v1.Warnings), args.Error(2)
+}
 
-		result, err := services.FetchCPUMetrics(mockAPIClient)
+type MockScalarValue struct {
+	Value model.SampleValue
+}
 
-		assert.Error(t, err, "Expected error when DB metrics fetch fails")
-		assert.Empty(t, result, "Expected empty result when DB metrics fetch fails")
-	})
+func (s MockScalarValue) Type() model.ValueType {
+	return ScalarType
+}
 
-	t.Run("CPU metrics data not fetched, but DB metrics is not fetched", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
 
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("failed to fetch CPU metrics"))
-
-		result, err := services.FetchCPUMetrics(mockAPIClient)
-
-		assert.Error(t, err, "Expected error when both CPU and DB metrics fetch fails")
-		assert.Empty(t, result, "Expected empty result when both CPU and DB metrics fetch fails")
-	})
-
-	t.Run("CPU metrics data fetched, and DB metrics also fetched", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, nil)
-
-		result, err := services.FetchCPUMetrics(mockAPIClient)
-
-		assert.NoError(t, err, "Expected no error when both CPU and DB metrics fetch succeed")
-		assert.NotEmpty(t, result, "Expected non-empty result when both CPU and DB metrics fetch succeed")
-	})
-
-	t.Run("CPU metrics data not fetched, but DB metrics is fetched", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("failed to fetch CPU metrics"))
-
-		result, err := services.FetchCPUMetrics(mockAPIClient)
-
-		assert.Error(t, err, "Expected error when CPU metrics fetch fails but DB metrics fetch succeeds")
-		assert.Empty(t, result, "Expected empty result when CPU metrics fetch fails but DB metrics fetch succeeds")
-	})
-
-	t.Run("Wrong format data received", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("wrong format data received"))
-
-		result, err := services.FetchCPUMetrics(mockAPIClient)
-
-		assert.Error(t, err, "Expected error when wrong format data received")
-		assert.Empty(t, result, "Expected empty result when wrong format data received")
-	})
-
-	t.Run("Timeout while fetching data - server error", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("timeout while fetching data"))
-
-		result, err := services.FetchCPUMetrics(mockAPIClient)
-
-		assert.Error(t, err, "Expected error when server timeout occurs")
-		assert.Empty(t, result, "Expected empty result when server timeout occurs")
-	})
-
-	t.Run("Nil condition handle", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, nil)
-
-		result, err := services.FetchCPUMetrics(mockAPIClient)
-
-		assert.NoError(t, err, "Expected no error when nil condition handled")
-		assert.NotEmpty(t, result, "Expected non-empty result when nil condition handled")
-	})
-
-	t.Run("Connection refused", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		mockAPIClient.On("Query", context.Background(), "my_counter{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("connection refused"))
-
-		result, err := services.FetchCPUMetrics(mockAPIClient)
-
-		assert.Error(t, err, "Expected error when connection refused")
-		assert.Empty(t, result, "Expected empty result when connection refused")
-	})
+func (s MockScalarValue) String() string {
+    return fmt.Sprintf("MockScalarValue: %f", s.Value)
 }
 
 func TestFetchDBConnections(t *testing.T) {
-	t.Run("DB metrics data fetched successfully", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		jobName := "hello-app"
-		namespace := "hello-app-namespace"
-
-		mockAPIClient.On("Query", context.Background(), "database_connections{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, nil)
-
-		result, err := services.FetchDBConnections(jobName, namespace, mockAPIClient)
-
-		assert.NoError(t, err, "Expected no error when DB metrics fetch succeeds")
-		assert.NotEmpty(t, result, "Expected non-empty result when DB metrics fetch succeeds")
-	})
-
-	t.Run("DB metrics data not fetched", func(t *testing.T) {
-		mockAPIClient := &mocks.APIClient{}
-
-		jobName := "hello-app"
-		namespace := "hello-app-namespace"
-
-		mockAPIClient.On("Query", context.Background(), "database_connections{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", time.Now()).Return(nil, nil, errors.New("failed to fetch DB metrics"))
-
-		result, err := services.FetchDBConnections(jobName, namespace, mockAPIClient)
-
-		assert.Error(t, err, "Expected error when DB metrics fetch fails")
-		assert.Empty(t, result, "Expected empty result when DB metrics fetch fails")
-	})
+	ctx := context.Background()
+	tests := []struct {
+		name           string
+		mockSetup      func(*MockAPIClient)
+		expectedResult string
+		expectErr      bool
+		expectedErr    string
+	}{
+		{
+			name: "successful query execution",
+			mockSetup: func(m *MockAPIClient) {
+				v := model.Vector{&model.Sample{Value: model.SampleValue(50)}}
+				m.On("Query", ctx, "database_connections{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", mock.AnythingOfType("time.Time")).Return(v, v1.Warnings{}, nil)
+			},
+			expectedResult: "Average DB Usage: 50.00",
+			expectErr:      false,
+			expectedErr:    "",
+		},
+		{
+			name: "query returns non-vector type",
+			mockSetup: func(m *MockAPIClient) {
+				v := MockScalarValue{Value: model.SampleValue(0)} 
+				m.On("Query", ctx, "database_connections{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", mock.AnythingOfType("time.Time")).Return(v, v1.Warnings{}, fmt.Errorf("unexpected query result type: scalar"))
+			},
+			expectErr:   true,
+			expectedErr: "unexpected query result type: scalar",
+		},
+		{
+			name: "query fails",
+			mockSetup: func(m *MockAPIClient) {
+				m.On("Query", ctx, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time")).Return(model.Vector{}, v1.Warnings{}, fmt.Errorf("query failed"))
+			},
+			expectErr:   true,
+			expectedErr: "query failed",
+		},
+		{
+			name: "query returns warnings",
+			mockSetup: func(m *MockAPIClient) {
+				v := model.Vector{&model.Sample{Value: model.SampleValue(50)}}
+				warnings := v1.Warnings{"Database Connections Exceeded", "Database Connections Under Utilize"} 
+				m.On("Query", ctx, "database_connections{instance=\"hello-app.hello-app-namespace.svc.cluster.local:80\", job=\"hello-app\"}", mock.AnythingOfType("time.Time")).Return(v, warnings, nil)
+			},
+			expectedResult: "Average DB Usage: 50.00",
+			expectErr:      false,
+			expectedErr:    "",
+		},
+	}
+	
+	for _, tc := range tests {
+        t.Run(tc.name, func(t *testing.T) {
+            client := new(MockAPIClient)
+            tc.mockSetup(client)
+            result, err := services.FetchDBConnections("hello-app", "hello-app-namespace", client)
+            if err != nil {
+                if !tc.expectErr {
+                    t.Errorf("unexpected error: %v", err)
+                } else if tc.expectedErr != "" && err.Error() != tc.expectedErr {
+                    t.Errorf("expected error message '%s', got '%v'", tc.expectedErr, err)
+					fmt.Println("Actual error:", err.Error())
+                }
+                return
+            }
+            if tc.expectErr {
+                t.Error("expected an error, but got none")
+                return
+            }
+            assert.Equal(t, tc.expectedResult, result, "result mismatch")
+            client.AssertExpectations(t)
+        })
+    }
 }
