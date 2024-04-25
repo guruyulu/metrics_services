@@ -1,27 +1,37 @@
+// main.go or another file
 package main
 
 import (
 	"fmt"
-	"net/http"
 
-	"github.com/gorilla/mux"
-	"github.com/guruyulu/metrics_services/controllers"
+	"github.com/guruyulu/metrics_services/services"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
 func main() {
-	router := mux.NewRouter()
+	// Create a Prometheus API client
+	client, err := api.NewClient(api.Config{
+		Address: "http://localhost:9090", // Prometheus server address
+	})
+	if err != nil {
+		fmt.Printf("Failed to create Prometheus API client: %v\n", err)
+		return
+	}
 
-	SetupRoutes(router)
+	// Initialize the API client for Prometheus
+	apiClient := services.NewPrometheusAPIClient(v1.NewAPI(client))
 
-	fmt.Println("Starting the Metrics service...")
-	http.ListenAndServe(":8080", router)
-}
+	// Initialize the metrics aggregator
+	aggregator := services.NewMetricsAggregator()
 
-func SetupRoutes(router *mux.Router) {
-	
-	router.HandleFunc("/cpu-metrics", controllers.GetCPUMetricsHandler).Methods("GET")
+	// Fetch and aggregate metrics
+	totalMetrics, err := aggregator.AggregateMetrics("hello-app", "hello-app-namespace", apiClient)
+	if err != nil {
+		fmt.Printf("Error aggregating metrics: %v\n", err)
+		return
+	}
 
-	router.HandleFunc("/memory-usage", controllers.GetMemoryUsageHandler).Methods("GET")
-
-	router.HandleFunc("/db-connections", controllers.GetDBConnectionsHandler).Methods("GET")
+	// Print the total aggregated metrics
+	fmt.Printf("Total aggregated metrics: %.2f\n", totalMetrics)
 }
