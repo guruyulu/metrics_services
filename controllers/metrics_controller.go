@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"encoding/json"
 
 	"github.com/guruyulu/metrics_services/services"
 	"github.com/prometheus/client_golang/api"
@@ -72,4 +73,34 @@ func GetDBConnectionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(result))
+}
+
+func GetNamespaces(w http.ResponseWriter, r *http.Request) {
+	// Fetch namespaces
+	namespaces, err := services.FetchNamespacesFromKubernetes()
+	if err != nil {
+		http.Error(w, "Failed to fetch Namespaces", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with the fetched data
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(namespaces)
+}
+
+func GetLabels(w http.ResponseWriter, r *http.Request) {
+	// Parse URL query parameters
+	query := r.URL.Query()
+	namespace := query.Get("namespace")
+
+	// Fetch labels for the specified namespace
+	labels, err := services.FetchLabelsForNamespace(namespace)
+	if err != nil {
+		http.Error(w, "Failed to fetch Labels", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with the fetched data
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(labels)
 }

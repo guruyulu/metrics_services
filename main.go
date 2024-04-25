@@ -24,4 +24,8 @@ func SetupRoutes(router *mux.Router) {
 	router.HandleFunc("/memory-usage", controllers.GetMemoryUsageHandler).Methods("GET")
 
 	router.HandleFunc("/db-connections", controllers.GetDBConnectionsHandler).Methods("GET")
+
+	router.HandleFunc("/namespaces-list", controllers.GetNamespaces).Methods("GET")
+
+	router.HandleFunc("/labels-list", controllers.GetLabels).Methods("GET")
 }
