@@ -27,72 +27,80 @@ func (c *PrometheusAPIClient) Query(ctx context.Context, query string, ts time.T
 
 type Metrics struct {
 	CPUMetrics    float64 `json:"cpu_metrics"`
-	MemoryUsage   string  `json:"memory_usage"`
+	MemoryUsage   float64 `json:"memory_usage"`
 	DBConnections float64 `json:"db_connections"`
 }
 
 func FetchMetrics(jobName, namespace string, apiClient APIClient) (Metrics, error) {
 	var metrics Metrics
+	var err error
 
-	cpuQuery := fmt.Sprintf(`my_counter{instance="%s.%s.svc.cluster.local:80", job="%s"}`, jobName, namespace, jobName)
-	cpuResult, _, err := apiClient.Query(context.Background(), cpuQuery, time.Now())
-	fmt.Println(cpuQuery)
-	if err != nil {
-		return metrics, err
-	}
-	metrics.CPUMetrics = calculateAvgCPUUsage(cpuResult.(model.Vector))
-
-	metrics.MemoryUsage, err = FetchMemoryUsage()
+	metrics.CPUMetrics, err = FetchCPUMetrics(jobName, namespace, apiClient)
 	if err != nil {
 		return metrics, err
 	}
 
-	dbQuery := fmt.Sprintf(`database_connections{instance="%s.%s.svc.cluster.local:80", job="%s"}`, jobName, namespace, jobName)
-	dbResult, _, err := apiClient.Query(context.Background(), dbQuery, time.Now())
+	metrics.MemoryUsage, err = FetchMemoryUsage(jobName, namespace, apiClient)
 	if err != nil {
 		return metrics, err
 	}
-	metrics.DBConnections = calculateDBConnections(dbResult.(model.Vector))
 
+	metrics.DBConnections, err = FetchDBConnections(jobName, namespace, apiClient)
+	if err != nil {
+		return metrics, err
+	}
+	fmt.Println(metrics, "******")
 	return metrics, nil
 }
 
-func calculateAvgCPUUsage(vector model.Vector) float64 {
-	var sum float64
-	var count int
+func FetchCPUMetrics(jobName, namespace string, apiClient APIClient) (float64, error) {
+	cpuQuery := fmt.Sprintf(`avg_over_time(my_counter{instance="%s.%s.svc.cluster.local:80", job="%s"}[5m])`, jobName, namespace, jobName)
+	cpuResult, _, err := apiClient.Query(context.Background(), cpuQuery, time.Now())
+	if err != nil {
+		return 0.0, err
+	}
 
-	for _, sample := range vector {
-		if !sample.Value.Equal(0) {
-			sum += float64(sample.Value)
-			count++
+	if cpuResult.Type() == model.ValVector {
+		vector := cpuResult.(model.Vector)
+		if len(vector) > 0 && !vector[0].Value.Equal(0) {
+			return float64(vector[0].Value), nil
 		}
 	}
 
-	if count > 0 {
-		return sum / float64(count)
-	}
-
-	return 0.0
+	return 0.0, fmt.Errorf("unexpected query result type")
 }
 
-func calculateDBConnections(vector model.Vector) float64 {
-	var sum float64
-	var count int
+func FetchDBConnections(jobName, namespace string, apiClient APIClient) (float64, error) {
+	dbQuery := fmt.Sprintf(`database_connections{instance="%s.%s.svc.cluster.local:80", job="%s"}`, jobName, namespace, jobName)
+	dbResult, _, err := apiClient.Query(context.Background(), dbQuery, time.Now())
+	if err != nil {
+		return 0.0, err
+	}
 
-	for _, sample := range vector {
-		if !sample.Value.Equal(0) {
-			sum += float64(sample.Value)
-			count++
+	if dbResult.Type() == model.ValVector {
+		vector := dbResult.(model.Vector)
+		if len(vector) > 0 && !vector[0].Value.Equal(0) {
+			return float64(vector[0].Value), nil
 		}
 	}
 
-	if count > 0 {
-		return sum / float64(count)
-	}
-
-	return 0.0
+	return 0.0, fmt.Errorf("unexpected query result type")
 }
 
-func FetchMemoryUsage() (string, error) {
-	return "Memory usage will be fetched here", nil
+func FetchMemoryUsage(jobName, namespace string, apiClient APIClient) (float64, error) {
+	memoryQuery := fmt.Sprintf(`database_connections{instance="%s.%s.svc.cluster.local:80", job="%s"}`, jobName, namespace, jobName)
+
+	memoryResult, _, err := apiClient.Query(context.Background(), memoryQuery, time.Now())
+	if err != nil {
+		return 0.0, err
+	}
+
+	if memoryResult.Type() == model.ValVector {
+		vector := memoryResult.(model.Vector)
+		if len(vector) > 0 && !vector[0].Value.Equal(0) {
+			return float64(vector[0].Value), nil
+		}
+	}
+
+	return 0.0, fmt.Errorf("unexpected query result type")
 }
