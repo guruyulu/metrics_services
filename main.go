@@ -9,11 +9,6 @@ import (
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
-// ServiceNamespaceInfo holds information about services and their labels for a namespace
-type ServiceNamespaceInfo struct {
-	Namespace string         // Namespace name
-	Services  []ServiceInfo // Slice of ServiceInfo structs
-}
 
 // ServiceInfo holds information about a service and its labels
 type ServiceInfo struct {
