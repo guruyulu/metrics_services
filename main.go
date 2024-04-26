@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/guruyulu/metrics_services/services"
@@ -10,12 +11,25 @@ import (
 
 // ServiceNamespaceInfo holds information about services and their labels for a namespace
 type ServiceNamespaceInfo struct {
-	Namespace string                    
-	Services  []services.ServiceInfo
+	Namespace string         // Namespace name
+	Services  []ServiceInfo // Slice of ServiceInfo structs
+}
+
+// ServiceInfo holds information about a service and its labels
+type ServiceInfo struct {
+	Namespace   string      `json:"namespace"` // Namespace name
+	Service     string      `json:"service"`   // Service name
+	Labels      []LabelInfo `json:"labels"`    // Slice of LabelInfo structs
+	ScaleNeeded bool        `json:"scaleNeeded"` // Indicates if scale is needed
+}
+
+// LabelInfo holds information about a label
+type LabelInfo struct {
+	Key   string `json:"key"`   // Label key
+	Value string `json:"value"` // Label value
 }
 
 func main() {
-
 	// Create a Prometheus API client
 	client, err := api.NewClient(api.Config{
 		Address: "http://localhost:9090", // Prometheus server address
@@ -48,9 +62,8 @@ func main() {
 		return
 	}
 
-	// Create a map to hold services and labels for each namespace
-	namespaceServices := make(map[string]ServiceNamespaceInfo)
-
+	// Create a slice to hold service info
+	var serviceInfos []ServiceInfo
 
 	// Iterate over each namespace
 	for _, ns := range namespaces {
@@ -61,9 +74,6 @@ func main() {
 			continue
 		}
 
-		// Create a slice to hold services and their labels
-		var serviceInfos []services.ServiceInfo
-
 		// Fetch labels for each service in the namespace
 		for _, service := range servicesList {
 			labels, err := services.FetchLabelsForService(ns, service.Name)
@@ -71,29 +81,36 @@ func main() {
 				fmt.Printf("Error fetching labels for service %s in namespace %s: %v\n", service.Name, ns, err)
 				continue
 			}
-			serviceInfo := services.ServiceInfo{Name: service.Name, Labels: labels}
+
+			var labelInfos []LabelInfo
+			for key, value := range labels {
+				labelInfo := LabelInfo{
+					Key:   key,
+					Value: value,
+				}
+				labelInfos = append(labelInfos, labelInfo)
+			}
+
+			// Set the scaleNeeded field based on some condition
+			scaleNeeded := false // Example condition, modify as per your requirement
+
+			serviceInfo := ServiceInfo{
+				Namespace:   ns,
+				Service:     service.Name,
+				Labels:      labelInfos,
+				ScaleNeeded: scaleNeeded,
+			}
 			serviceInfos = append(serviceInfos, serviceInfo)
 		}
-
-		// Store services and labels for the namespace
-		namespaceInfo := ServiceNamespaceInfo{Namespace: ns, Services: serviceInfos}
-		namespaceServices[ns] = namespaceInfo
-
-		// Print services and labels for the namespace
-		fmt.Printf("Namespace: %s\n", ns)
-		for _, service := range serviceInfos {
-			fmt.Printf("Service: %s, Labels: %+v\n", service.Name, service.Labels)
-		}
-		fmt.Println()
 	}
 
-	// Print the map containing services and labels for each namespace
-	fmt.Println("Namespace Services and Labels Map:")
-	for ns, info := range namespaceServices {
-		fmt.Printf("Namespace: %s\n", ns)
-		for _, service := range info.Services {
-			fmt.Printf("Service: %s, Labels: %+v\n", service.Name, service.Labels)
-		}
-		fmt.Println()
+	// Convert the service info slice to JSON
+	jsonData, err := json.MarshalIndent(serviceInfos, "", "    ")
+	if err != nil {
+		fmt.Printf("Error marshaling JSON: %v\n", err)
+		return
 	}
+
+	// Print the JSON data
+	fmt.Println(string(jsonData))
 }

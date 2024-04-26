@@ -1,4 +1,3 @@
-// metrics_aggregator.go
 package services
 
 import (
@@ -12,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ServiceInfo holds information about a Kubernetes service
+
 type ServiceInfo struct {
 	Name   string            // Service name
 	Labels map[string]string // Labels associated with the service
