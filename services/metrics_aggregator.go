@@ -3,9 +3,11 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // FormatedServiceInfo holds information about a service and its labels
@@ -69,16 +71,6 @@ func Perform() {
 	// Initialize the metrics aggregator
 	aggregator := NewMetricsAggregator()
 
-	// Fetch and aggregate metrics
-	totalMetrics, err := aggregator.AggregateMetrics("hello-app", "hello-app-namespace", apiClient)
-	if err != nil {
-		fmt.Printf("Error aggregating metrics: %v\n", err)
-		return
-	}
-
-	// Print the total aggregated metrics
-	fmt.Printf("Total aggregated metrics: %.2f\n\n\n", totalMetrics)
-
 	// Fetch namespaces
 	namespaces, err := FetchNamespacesFromKubernetes()
 	if err != nil {
@@ -91,19 +83,36 @@ func Perform() {
 
 	// Iterate over each namespace
 	for _, ns := range namespaces {
+
+		if ns == "metrics-service-namespace" || ns == "default" || ns == "keda" || ns == "kube-node-lease" || ns == "kube-public" || ns == "kube-system" {
+			continue
+		}
+
 		// Fetch services for the namespace
 		servicesList, err := FetchServicesForNamespace(ns)
 		if err != nil {
 			fmt.Printf("Error fetching services for namespace %s: %v\n", ns, err)
-			continue
+			return
 		}
 
 		// Fetch labels for each service in the namespace
 		for _, service := range servicesList {
+
+			fmt.Println(service.Name, ns)
+
+			totalMetrics, err := aggregator.AggregateMetrics(service.Name, ns, apiClient)
+			if err != nil {
+				fmt.Printf("Error aggregating metrics: %v\n", err)
+				return
+			}
+
+			// Print the total aggregated metrics
+			fmt.Printf("Total aggregated metrics: %.2f\n\n\n", totalMetrics)
+
 			labels, err := FetchLabelsForService(ns, service.Name)
 			if err != nil {
 				fmt.Printf("Error fetching labels for service %s in namespace %s: %v\n", service.Name, ns, err)
-				continue
+				return
 			}
 
 			var labelInfos []LabelInfo
@@ -114,9 +123,11 @@ func Perform() {
 				}
 				labelInfos = append(labelInfos, labelInfo)
 			}
+			scaleNeeded := false
 
-			// Set the scaleNeeded field based on some condition
-			scaleNeeded := false // Example condition, modify as per your requirement
+			if totalMetrics > 100 {
+				scaleNeeded = true
+			}
 
 			serviceInfo := FormatedServiceInfo{
 				Namespace:   ns,
@@ -129,12 +140,50 @@ func Perform() {
 	}
 
 	// Convert the service info slice to JSON
-	jsonData, err := json.MarshalIndent(serviceInfos, "", "    ")
+	jsonData, err := json.Marshal(serviceInfos)
 	if err != nil {
 		fmt.Printf("Error marshaling JSON: %v\n", err)
 		return
 	}
 
+	if err != nil {
+		fmt.Printf("Error writing response: %v\n", err)
+		return
+	}
+
+	// Send JSON data to Prometheus
+	SendJSONToPrometheus(jsonData)
+
 	// Print the JSON data
 	fmt.Println(string(jsonData))
+}
+
+var jsonDataMetric prometheus.Gauge
+
+func SendJSONToPrometheus(jsonData []byte) {
+	// Check if the metric collector is already registered
+	if jsonDataMetric == nil {
+		// Create a gauge metric to store the presence of JSON data
+		jsonDataMetric = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "cluster_data",
+				Help: "Cluster data for services",
+				ConstLabels: prometheus.Labels{
+					"json_data": string(jsonData),
+				},
+			},
+		)
+	}
+
+	// Register the metric collector if it's not already registered
+	if err := prometheus.Register(jsonDataMetric); err != nil {
+		// Metric is already registered, no need to re-register
+	}
+
+	// Set the value to 1 indicating the presence of data
+	jsonDataMetric.Set(1)
+}
+
+func MetricsHandler(w http.ResponseWriter, r *http.Request) {
+	Perform()
 }
