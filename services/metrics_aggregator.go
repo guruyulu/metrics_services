@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -44,32 +42,33 @@ func NewMetricsAggregator() *MetricsAggregator {
 	return &MetricsAggregator{}
 }
 
-func (a *MetricsAggregator) AggregateMetrics(jobName, namespace string, apiClient APIClient) (float64, error) {
-	metrics, err := FetchMetrics(jobName, namespace, apiClient)
-	if err != nil {
-		return 0.0, err
-	}
-	// Perform aggregation here, for example, adding CPU metrics and DB connections
-	totalMetrics := metrics.CPUMetrics + metrics.DBConnections
+// func (a *MetricsAggregator) AggregateMetrics(jobName, namespace string, apiClient APIClient) (float64, error) {
+// 	metrics, err := FetchMetrics(jobName, namespace, apiClient)
+// 	if err != nil {
+// 		return 0.0, err
+// 	}
+// 	// Perform aggregation here, for example, adding CPU metrics and DB connections
+// 	totalMetrics := metrics.CPUMetrics + metrics.DBConnections
 
-	return totalMetrics, nil
-}
+// 	return totalMetrics, nil
+// }
 
 func Perform() {
 	// Create a Prometheus API client
-	client, err := api.NewClient(api.Config{
-		Address: "http://localhost:9090", // Prometheus server address
-	})
-	if err != nil {
-		fmt.Printf("Failed to create Prometheus API client: %v\n", err)
-		return
-	}
+	// client, err := api.NewClient(api.Config{
+	// 	// Address: "http://172.17.0.2:30841", // Prometheus server address if inside cluster
+	// 	Address: "http://localhost:9090", // Prometheus server address if outside cluster
+	// })
+	// if err != nil {
+	// 	fmt.Printf("Failed to create Prometheus API client: %v\n", err)
+	// 	return
+	// }
 
 	// Initialize the API client for Prometheus
-	apiClient := NewPrometheusAPIClient(v1.NewAPI(client))
+	// apiClient := NewPrometheusAPIClient(v1.NewAPI(client))
 
 	// Initialize the metrics aggregator
-	aggregator := NewMetricsAggregator()
+	// aggregator := NewMetricsAggregator()
 
 	// Fetch namespaces
 	namespaces, err := FetchNamespacesFromKubernetes()
@@ -100,14 +99,14 @@ func Perform() {
 
 			fmt.Println(service.Name, ns)
 
-			totalMetrics, err := aggregator.AggregateMetrics(service.Name, ns, apiClient)
-			if err != nil {
-				fmt.Printf("Error aggregating metrics: %v\n", err)
-				return
-			}
+			// totalMetrics, err := aggregator.AggregateMetrics(service.Name, ns, apiClient)
+			// if err != nil {
+			// 	fmt.Printf("Error aggregating metrics: %v\n", err)
+			// 	return
+			// }
 
-			// Print the total aggregated metrics
-			fmt.Printf("Total aggregated metrics: %.2f\n\n\n", totalMetrics)
+			// // Print the total aggregated metrics
+			// fmt.Printf("Total aggregated metrics: %.2f\n\n\n", totalMetrics)
 
 			labels, err := FetchLabelsForService(ns, service.Name)
 			if err != nil {
@@ -125,9 +124,9 @@ func Perform() {
 			}
 			scaleNeeded := false
 
-			if totalMetrics > 100 {
-				scaleNeeded = true
-			}
+			// if totalMetrics > 100 {
+			// 	scaleNeeded = true
+			// }
 
 			serviceInfo := FormatedServiceInfo{
 				Namespace:   ns,
