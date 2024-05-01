@@ -25,14 +25,21 @@ type PrometheusAPIClient struct {
 	api v1.API
 }
 
+type Label struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type PodInfo struct {
-	Name         string
-	CreationTime time.Time
-	Age          time.Duration
-	CPUUsage     float64
-	MemoryUsage  float64
-	Namespace    string
-	Service      string
+	Name                string
+	CreationTime        time.Time
+	Age                 time.Duration
+	CPUUsage            float64
+	MemoryUsage         float64
+	DatabaseConnections float64
+	Namespace           string
+	Service             string
+	Labels              []Label `json:"labels"`
 }
 
 func NewPrometheusAPIClient(apiClient v1.API) *PrometheusAPIClient {
@@ -67,7 +74,6 @@ func FetchMetrics(jobName, podName, namespace string, apiClient APIClient) (Metr
 	if err != nil {
 		return metrics, err
 	}
-	fmt.Println(metrics, "******")
 	return metrics, nil
 }
 
@@ -148,14 +154,11 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Number of replicas: %d\n", len(deployments.Items))
+	// fmt.Printf("Number of replicas: %d\n", len(deployments.Items))
 
 	var podInfoList []PodInfo
 
 	for _, deployment := range deployments.Items {
-		fmt.Printf("Deployment: %s\n", deployment.Name)
-		fmt.Printf("Replicas: %d\n", *deployment.Spec.Replicas)
-		fmt.Printf("Creation time: %s\n", deployment.CreationTimestamp)
 
 		// List pods of the deployment
 		pods, err := clientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", deployment.Name)})
@@ -164,11 +167,9 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 			continue
 		}
 
-		// Print pod names
-		fmt.Println("Pods:")
-
 		for _, pod := range pods.Items {
 			// Calculate pod age
+
 			creationTime := pod.CreationTimestamp.Time
 			age := time.Since(creationTime)
 
@@ -182,31 +183,30 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 				continue
 			}
 
-			// Add pod information to the list
 			podInfo := PodInfo{
-				Name:         pod.Name,
-				CreationTime: creationTime,
-				Age:          age,
-				CPUUsage:     metrics.CPUMetrics,
-				MemoryUsage:  metrics.MemoryUsage,
-				Namespace:    namespace,
-				Service:      deployment.Name,
+				Name:                pod.Name,
+				CreationTime:        creationTime,
+				Age:                 age,
+				CPUUsage:            metrics.CPUMetrics,
+				MemoryUsage:         metrics.MemoryUsage,
+				DatabaseConnections: metrics.DBConnections,
+				Namespace:           namespace,
+				Service:             deployment.Name,
+				Labels:              make([]Label, 0),
+			}
+
+			// Populate labels
+			for key, value := range pod.Labels {
+				label := Label{
+					Key:   key,
+					Value: value,
+				}
+				podInfo.Labels = append(podInfo.Labels, label)
 			}
 			podInfoList = append(podInfoList, podInfo)
 		}
 	}
 
-	fmt.Println("Pods Details:")
-	for _, podInfo := range podInfoList {
-		fmt.Printf("Name: %s\n", podInfo.Name)
-		fmt.Printf("Creation Time: %s\n", podInfo.CreationTime)
-		fmt.Printf("Age: %s\n", podInfo.Age)
-		fmt.Printf("CPU Usage: %.2f\n", podInfo.CPUUsage)
-		fmt.Printf("Memory Usage: %.2f\n", podInfo.MemoryUsage)
-		fmt.Printf("Namespace: %s\n", podInfo.Namespace)
-		fmt.Printf("Service: %s\n", podInfo.Service)
-		fmt.Println("--------------------------------------\n\n")
-	}
 	return podInfoList, nil
 }
 
@@ -301,104 +301,6 @@ func fetchNamespaces(clientset *kubernetes.Clientset) ([]string, error) {
 	}
 
 	return namespaces, nil
-}
-
-// Function to fetch labels for a given namespace from the Kubernetes API server
-func FetchLabelsForNamespace(namespace string) (map[string]string, error) {
-	// Check if the KUBECONFIG environment variable is set
-	kubeConfigPath := os.Getenv("KUBECONFIG")
-	if kubeConfigPath == "" {
-		return nil, fmt.Errorf("KUBECONFIG environment variable is not set")
-	}
-
-	// Create a Kubernetes client using the specified kubeconfig path
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch namespace
-	ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract labels
-	labels := ns.Labels
-
-	return labels, nil
-}
-
-// FetchServicesForNamespace fetches services along with their respective labels for a given namespace
-func FetchServicesForNamespace(namespace string) ([]*ServiceInfo, error) {
-	// Check if the KUBECONFIG environment variable is set
-	kubeConfigPath := os.Getenv("KUBECONFIG")
-	if kubeConfigPath == "" {
-		return nil, fmt.Errorf("KUBECONFIG environment variable is not set")
-	}
-
-	// Create a Kubernetes client using the specified kubeconfig path
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch services in the namespace
-	serviceList, err := clientset.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	// Construct slice with service names and labels
-	var services []*ServiceInfo
-	for _, service := range serviceList.Items {
-		// Collect service name and labels
-		labels, err := FetchLabelsForService(namespace, service.Name)
-		if err != nil {
-			return nil, err
-		}
-		services = append(services, NewServiceInfo(service.Name, labels))
-	}
-
-	return services, nil
-}
-
-// FetchLabelsForService fetches labels for a given service in the specified namespace
-func FetchLabelsForService(namespace, serviceName string) (map[string]string, error) {
-	// Check if the KUBECONFIG environment variable is set
-	kubeConfigPath := os.Getenv("KUBECONFIG")
-	if kubeConfigPath == "" {
-		return nil, fmt.Errorf("KUBECONFIG environment variable is not set")
-	}
-
-	// Create a Kubernetes client using the specified kubeconfig path
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch service in the namespace
-	service, err := clientset.CoreV1().Services(namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract labels
-	labels := service.Labels
-
-	return labels, nil
 }
 
 // ===================================== if running inside cluser =======================================
