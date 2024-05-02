@@ -41,6 +41,8 @@ type PodInfo struct {
 	Status              string
 }
 
+type PodMap map[string]map[string][]PodInfo
+
 func NewPrometheusAPIClient(apiClient v1.API) *PrometheusAPIClient {
 	return &PrometheusAPIClient{api: apiClient}
 }
@@ -53,6 +55,31 @@ type Metrics struct {
 	CPUMetrics    float64 `json:"cpu_metrics"`
 	MemoryUsage   float64 `json:"memory_usage"`
 	DBConnections float64 `json:"db_connections"`
+}
+
+// TransformToPodMap transforms PodInfo list to a PodMap
+func TransformToPodMap(podInfoList []PodInfo) PodMap {
+	podMap := make(PodMap)
+
+	for _, podInfo := range podInfoList {
+		namespace := podInfo.Namespace
+		service := podInfo.Service
+
+		// Initialize namespace map if not present
+		if _, ok := podMap[namespace]; !ok {
+			podMap[namespace] = make(map[string][]PodInfo)
+		}
+
+		// Initialize service slice if not present
+		if _, ok := podMap[namespace][service]; !ok {
+			podMap[namespace][service] = make([]PodInfo, 0)
+		}
+
+		// Append podInfo to the service slice
+		podMap[namespace][service] = append(podMap[namespace][service], podInfo)
+	}
+
+	return podMap
 }
 
 func FetchMetrics(jobName, podName, namespace string, apiClient APIClient) (Metrics, error) {
