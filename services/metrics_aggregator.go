@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"net/http"
 )
 
 func Perform() {
@@ -26,6 +25,6 @@ func Perform() {
 	}
 }
 
-func MetricsHandler(w http.ResponseWriter, r *http.Request) {
-	Perform()
-}
+// func MetricsHandler(w http.ResponseWriter, r *http.Request) {
+// 	Perform()
+// }
