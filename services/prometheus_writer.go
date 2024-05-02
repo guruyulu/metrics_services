@@ -13,6 +13,7 @@ func Compute(podData []PodInfo) {
 		fmt.Println("CPUUsage:", pod.CPUUsage)
 		fmt.Println("MemoryUsage:", pod.MemoryUsage)
 		fmt.Println("Namespace:", pod.Namespace)
+		fmt.Println("DB Connections:", pod.DatabaseConnections)
 		fmt.Println("Service:", pod.Service)
 		fmt.Println("Labels:")
 		for key, value := range pod.Labels {

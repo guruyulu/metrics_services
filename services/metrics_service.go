@@ -3,9 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
@@ -210,29 +208,6 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 	return podInfoList, nil
 }
 
-// Function to get the cluster name from the Kubernetes API server
-// Function to get the cluster name from the Kubernetes configuration
-func getClusterName(config *rest.Config) (string, error) {
-	if config == nil {
-		return "", fmt.Errorf("Kubernetes configuration is nil")
-	}
-
-	if config.Host == "" {
-		return "", fmt.Errorf("Kubernetes configuration host is empty")
-	}
-
-	// Extract the cluster name from the Kubernetes configuration host URL
-	// For example, if the URL is "https://kubernetes.default.svc", the cluster name would be "kubernetes"
-	clusterURL, err := url.Parse(config.Host)
-	if err != nil {
-		return "", fmt.Errorf("Failed to parse Kubernetes host URL: %v", err)
-	}
-
-	clusterName := strings.TrimSuffix(clusterURL.Hostname(), ".")
-
-	return clusterName, nil
-}
-
 // getConfig returns Kubernetes config
 func getConfig() (*rest.Config, error) {
 	// Check if running inside Kubernetes cluster
@@ -303,118 +278,30 @@ func fetchNamespaces(clientset *kubernetes.Clientset) ([]string, error) {
 	return namespaces, nil
 }
 
-// ===================================== if running inside cluser =======================================
-// FetchNamespacesFromKubernetes fetches namespaces from Kubernetes
+// === IF Running Inside cluster====
 // func FetchNamespacesFromKubernetes() ([]string, error) {
-// 	// Get the in-cluster configuration
+// 	// Get the Kubernetes cluster configuration
 // 	config, err := rest.InClusterConfig()
 // 	if err != nil {
 // 		return nil, err
 // 	}
 
-// 	// Create the Kubernetes client
+// 	// Create a Kubernetes clientset using the cluster configuration
 // 	clientset, err := kubernetes.NewForConfig(config)
 // 	if err != nil {
 // 		return nil, err
 // 	}
 
-// 	// Fetch namespaces
-// 	nsList, err := clientset.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Extract namespace names
-// 	namespaces := make([]string, len(nsList.Items))
-// 	for i, ns := range nsList.Items {
-// 		namespaces[i] = ns.Name
-// 	}
-
-// 	return namespaces, nil
+// 	// Fetch namespaces using the clientset
+// 	return fetchNamespaces(clientset)
 // }
 
-// // Function to fetch labels for a given namespace from the Kubernetes API server
-// func FetchLabelsForNamespace(namespace string) (map[string]string, error) {
-// 	// Get the in-cluster configuration
+// func getConfig() (*rest.Config, error) {
+// 	// Get the Kubernetes cluster configuration
 // 	config, err := rest.InClusterConfig()
 // 	if err != nil {
 // 		return nil, err
 // 	}
 
-// 	// Create the Kubernetes client
-// 	clientset, err := kubernetes.NewForConfig(config)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Fetch namespace
-// 	ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Extract labels
-// 	labels := ns.Labels
-
-// 	return labels, nil
-// }
-
-// // FetchServicesForNamespace fetches services along with their respective labels for a given namespace
-// func FetchServicesForNamespace(namespace string) ([]*ServiceInfo, error) {
-// 	// Get the in-cluster configuration
-// 	config, err := rest.InClusterConfig()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Create the Kubernetes client
-// 	clientset, err := kubernetes.NewForConfig(config)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Fetch services in the namespace
-// 	serviceList, err := clientset.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Construct slice with service names and labels
-// 	var services []*ServiceInfo
-// 	for _, service := range serviceList.Items {
-// 		// Collect service name and labels
-// 		labels, err := FetchLabelsForService(namespace, service.Name)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		services = append(services, NewServiceInfo(service.Name, labels))
-// 	}
-
-// 	return services, nil
-// }
-
-// // FetchLabelsForService fetches labels for a given service in the specified namespace
-// func FetchLabelsForService(namespace, serviceName string) (map[string]string, error) {
-// 	// Get the in-cluster configuration
-// 	config, err := rest.InClusterConfig()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Create the Kubernetes client
-// 	clientset, err := kubernetes.NewForConfig(config)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Fetch service in the namespace
-// 	service, err := clientset.CoreV1().Services(namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Extract labels
-// 	labels := service.Labels
-
-// 	return labels, nil
+// 	return config, nil
 // }
