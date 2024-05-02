@@ -15,6 +15,7 @@ func Compute(podData []PodInfo) {
 		fmt.Println("Namespace:", pod.Namespace)
 		fmt.Println("DB Connections:", pod.DatabaseConnections)
 		fmt.Println("Service:", pod.Service)
+		fmt.Println("Status:", pod.Status)
 		fmt.Println("Labels:")
 		for key, value := range pod.Labels {
 			fmt.Printf("\t%s: %s\n", key, value)

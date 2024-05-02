@@ -38,6 +38,7 @@ type PodInfo struct {
 	Namespace           string
 	Service             string
 	Labels              []Label `json:"labels"`
+	Status              string
 }
 
 func NewPrometheusAPIClient(apiClient v1.API) *PrometheusAPIClient {
@@ -170,6 +171,7 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 
 			creationTime := pod.CreationTimestamp.Time
 			age := time.Since(creationTime)
+			podStatus := string(pod.Status.Phase)
 
 			// Create Prometheus API client
 			apiClient := NewPrometheusAPIClient(v1.NewAPI(client))
@@ -191,6 +193,7 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 				Namespace:           namespace,
 				Service:             deployment.Name,
 				Labels:              make([]Label, 0),
+				Status:              podStatus,
 			}
 
 			// Populate labels
