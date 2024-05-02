@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func ComputeScale(podData []PodInfo) {
+func Compute(podData []PodInfo) {
 	fmt.Println("===== INFO =====")
 	for _, pod := range podData {
 		fmt.Println("Name:", pod.Name)
@@ -20,4 +20,9 @@ func ComputeScale(podData []PodInfo) {
 		}
 		fmt.Println("==================================")
 	}
+}
+
+func ComputeScale(podData []PodInfo) {
+	Compute(podData)
+
 }
