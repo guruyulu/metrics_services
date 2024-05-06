@@ -159,7 +159,7 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 
 	client, err := api.NewClient(api.Config{
 		// Address: "http://172.17.0.2:30841", // Prometheus server address if inside cluster
-		Address: "http://localhost:8080", // Prometheus server address if outside cluster
+		Address: "http://localhost:9090", // Prometheus server address if outside cluster
 	})
 	if err != nil {
 		fmt.Printf("Failed to create Prometheus API client: %v\n", err)
