@@ -72,19 +72,19 @@ func Compute(podData []PodInfo) map[string]map[string]ServiceStats {
 			avgCPU := totalCPU / float64(podCount)
 			avgMemory := totalMemory / float64(podCount)
 
-			// Check if scaling is needed
-			var isScale int
-			if avgCPU > 60 && avgMemory > 60 {
-				isScale = 1
-			}
+			// // Check if scaling is needed
+			// var isScale int
+			// if avgCPU > 60 && avgMemory > 60 {
+			// 	isScale = 1
+			// }
 
 			serviceStats[namespace][service] = ServiceStats{
 				AverageCPU:    avgCPU,
 				AverageMemory: avgMemory,
 				PodCount:      podCount,
-				IsScale:       isScale,
+				IsScale:       1,
 			}
-
+			fmt.Println("\t\tScale needed:", serviceStats)
 			fmt.Println("\t\tAverage CPU Usage:", avgCPU)
 			fmt.Println("\t\tAverage Memory Usage:", avgMemory)
 		}
