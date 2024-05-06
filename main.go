@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/guruyulu/metrics_services/services"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -11,6 +12,13 @@ import (
 
 func main() {
 	services.Perform()
+
+	ticker := time.NewTicker(50 * time.Second)
+	go func() {
+		for range ticker.C {
+			services.Perform()
+		}
+	}()
 
 	// Expose Prometheus metrics endpoint
 	http.Handle("/metrics", promhttp.Handler())

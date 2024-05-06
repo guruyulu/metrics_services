@@ -24,7 +24,3 @@ func Perform() {
 		}
 	}
 }
-
-// func MetricsHandler(w http.ResponseWriter, r *http.Request) {
-// 	Perform()
-// }
