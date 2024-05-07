@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -156,6 +157,11 @@ func FetchDBConnections(jobName, namespace string, apiClient APIClient) (float64
 
 // PrintReplicasAndDuration fetches pod information and returns a slice of PodInfo structs
 func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
+
+	if namespace != "hello-app1-namespace" {
+		return nil, nil
+	}
+	log.Println("namespace ::", namespace)
 
 	client, err := api.NewClient(api.Config{
 		// Address: "http://172.17.0.2:30841", // Prometheus server address if inside cluster
