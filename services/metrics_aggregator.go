@@ -16,8 +16,8 @@ func Perform() {
 		if ns == "metrics-service-namespace" || ns == "default" || ns == "keda" || ns == "kube-node-lease" || ns == "kube-public" || ns == "kube-system" {
 			continue
 		}
-		podData, err := PrintReplicasAndDuration(ns)
-		ComputeScale(podData)
+		podData, err := getPodData(ns)
+		Scale(podData)
 
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)

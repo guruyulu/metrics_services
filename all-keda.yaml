@@ -24,6 +24,7 @@ metadata:
   name: hello-app
   namespace: hello-app1-namespace
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: hello-app
@@ -47,29 +48,29 @@ spec:
             memory: "512Mi"
 
 ---
-apiVersion: autoscaling/v1
-kind: HorizontalPodAutoscaler
-metadata:
-  name: hello-app-hpa
-  namespace: hello-app1-namespace
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: hello-app
-  minReplicas: 1
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      targetAverageUtilization: 50
-  - type: Resource
-    resource:
-      name: memory
-      targetAverageUtilization: 50
+# apiVersion: autoscaling/v1
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: hello-app-hpa
+#   namespace: hello-app1-namespace
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: hello-app
+#   minReplicas: 1
+#   maxReplicas: 10
+#   metrics:
+#   - type: Resource
+#     resource:
+#       name: cpu
+#       targetAverageUtilization: 50
+#   - type: Resource
+#     resource:
+#       name: memory
+#       targetAverageUtilization: 50
 
----
+# ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -103,44 +104,44 @@ spec:
   selector:
     app: hello-app2
 
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: hello-app2
-  namespace: hello-app1-namespace
-spec:
-  replicas:10
-  selector:
-    matchLabels:
-      app: hello-app2
-  template:
-    metadata:
-      labels:
-        app: hello-app2
-    spec:
-      containers:
-      - name: hello-app2
-        image: raushan2231/my-nodejs-app:fast
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 3002
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: hello-app2-monitor
-  namespace: hello-app1-namespace
-  labels:
-    app: hello-app2
-spec:
-  selector:
-    matchLabels:
-      app: hello-app2
-  endpoints:
-  - port: web
-    interval: 5s
-    path: /metrics
-  targetLabels:
-    - app
-  jobLabel: app
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: hello-app2
+#   namespace: hello-app1-namespace
+# spec:
+#   replicas:10
+#   selector:
+#     matchLabels:
+#       app: hello-app2
+#   template:
+#     metadata:
+#       labels:
+#         app: hello-app2
+#     spec:
+#       containers:
+#       - name: hello-app2
+#         image: raushan2231/my-nodejs-app:fast
+#         imagePullPolicy: Always
+#         ports:
+#         - containerPort: 3002
+# ---
+# apiVersion: monitoring.coreos.com/v1
+# kind: ServiceMonitor
+# metadata:
+#   name: hello-app2-monitor
+#   namespace: hello-app1-namespace
+#   labels:
+#     app: hello-app2
+# spec:
+#   selector:
+#     matchLabels:
+#       app: hello-app2
+#   endpoints:
+#   - port: web
+#     interval: 5s
+#     path: /metrics
+#   targetLabels:
+#     - app
+#   jobLabel: app

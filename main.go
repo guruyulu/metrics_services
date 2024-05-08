@@ -11,7 +11,7 @@ import (
 func main() {
 	services.Perform()
 
-	ticker := time.NewTicker(50 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	go func() {
 		for range ticker.C {
 			services.Perform()
