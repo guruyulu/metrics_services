@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 )
 
 func decisionHandler(podData []PodInfo, clientset *kubernetes.Clientset) {
@@ -92,9 +92,9 @@ func scaleDeployment(clientset *kubernetes.Clientset, namespace model.LabelValue
 }
 
 func Scale(podData []PodInfo) {
-	kubeconfig := "/Users/raushan/.kube/config"
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	// config, err := rest.InClusterConfig()
+	// kubeconfig := "/Users/guru/.kube/config"
+	// config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("Error building kubeconfig: %s", err.Error())
 	}

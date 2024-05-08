@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: metrics-go-app-service
-        image: raushan2231/metrics_service:v24
+        image: raushan2231/metrics_service:v25
         imagePullPolicy: Always
         ports:
         - containerPort: 8082
