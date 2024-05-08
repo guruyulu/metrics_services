@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 )
 
 var (
@@ -118,7 +118,7 @@ func Compute(podData []PodInfo, clientset *kubernetes.Clientset) map[string]map[
 }
 
 func scaleDeployment(clientset *kubernetes.Clientset, namespace model.LabelValue, deploymentName model.LabelValue, replicas int32) error {
-	fmt.Println("replica inside scale : ", replicas)
+	fmt.Println("replica should be scale to: ", replicas)
 	deploymentsClient := clientset.AppsV1().Deployments(string(namespace))
 
 	var deployment *appsv1.Deployment
@@ -147,8 +147,7 @@ func scaleDeployment(clientset *kubernetes.Clientset, namespace model.LabelValue
 }
 
 func ComputeScale(podData []PodInfo) {
-	kubeconfig := "/Users/raushan/.kube/config"
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("Error building kubeconfig: %s", err.Error())
 	}

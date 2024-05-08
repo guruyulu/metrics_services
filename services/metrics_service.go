@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
@@ -13,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 type APIClient interface {
@@ -164,8 +162,8 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 	log.Println("namespace ::", namespace)
 
 	client, err := api.NewClient(api.Config{
-		// Address: "http://172.17.0.2:30841", // Prometheus server address if inside cluster
-		Address: "http://localhost:9090", // Prometheus server address if outside cluster
+		Address: "http://172.17.0.2:30841", // Prometheus server address if inside cluster
+		// Address: "http://localhost:9090", // Prometheus server address if outside cluster
 	})
 	if err != nil {
 		fmt.Printf("Failed to create Prometheus API client: %v\n", err)
@@ -185,8 +183,6 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// fmt.Printf("Number of replicas: %d\n", len(deployments.Items))
 
 	var podInfoList []PodInfo
 
@@ -244,55 +240,6 @@ func PrintReplicasAndDuration(namespace string) ([]PodInfo, error) {
 	return podInfoList, nil
 }
 
-// // ==================================== if running outside cluser ==================================
-
-// FetchNamespacesFromKubernetes fetches namespaces from Kubernetes
-func FetchNamespacesFromKubernetes() ([]string, error) {
-	var config *rest.Config
-	var err error
-
-	// Check if running inside Kubernetes cluster
-	if _, err := rest.InClusterConfig(); err != nil {
-		// Not running inside a Kubernetes cluster, use out-of-cluster configuration
-		kubeConfigPath := os.Getenv("KUBECONFIG")
-		if kubeConfigPath == "" {
-			return nil, fmt.Errorf("KUBECONFIG environment variable is not set")
-		}
-		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// Running inside a Kubernetes cluster, use in-cluster configuration
-		config, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	// fmt.Println("Namespace list : "fetchNamespaces(clientset))
-	return fetchNamespaces(clientset)
-}
-
-// getConfig returns Kubernetes config
-func getConfig() (*rest.Config, error) {
-	// Check if running inside Kubernetes cluster
-	if _, err := rest.InClusterConfig(); err != nil {
-		// Not running inside a Kubernetes cluster, use out-of-cluster configuration
-		kubeConfigPath := os.Getenv("KUBECONFIG")
-		if kubeConfigPath == "" {
-			return nil, fmt.Errorf("KUBECONFIG environment variable is not set")
-		}
-		return clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	}
-	// Running inside a Kubernetes cluster, use in-cluster configuration
-	return rest.InClusterConfig()
-}
-
 // fetchNamespaces fetches namespaces using the provided clientset
 func fetchNamespaces(clientset *kubernetes.Clientset) ([]string, error) {
 	// Fetch namespaces
@@ -314,30 +261,79 @@ func fetchNamespaces(clientset *kubernetes.Clientset) ([]string, error) {
 	return namespaces, nil
 }
 
-// // === IF Running Inside cluster====
+// === IF Running Inside cluster====
+func FetchNamespacesFromKubernetes() ([]string, error) {
+	// Get the Kubernetes cluster configuration
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a Kubernetes clientset using the cluster configuration
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch namespaces using the clientset
+	return fetchNamespaces(clientset)
+}
+
+func getConfig() (*rest.Config, error) {
+	// Get the Kubernetes cluster configuration
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+// // // ==================================== if running outside cluser ==================================
+
+// // FetchNamespacesFromKubernetes fetches namespaces from Kubernetes
 // func FetchNamespacesFromKubernetes() ([]string, error) {
-// 	// Get the Kubernetes cluster configuration
-// 	config, err := rest.InClusterConfig()
-// 	if err != nil {
-// 		return nil, err
+// 	var config *rest.Config
+// 	var err error
+
+// 	// Check if running inside Kubernetes cluster
+// 	if _, err := rest.InClusterConfig(); err != nil {
+// 		// Not running inside a Kubernetes cluster, use out-of-cluster configuration
+// 		kubeConfigPath := os.Getenv("KUBECONFIG")
+// 		if kubeConfigPath == "" {
+// 			return nil, fmt.Errorf("KUBECONFIG environment variable is not set")
+// 		}
+// 		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	} else {
+// 		// Running inside a Kubernetes cluster, use in-cluster configuration
+// 		config, err = rest.InClusterConfig()
+// 		if err != nil {
+// 			return nil, err
+// 		}
 // 	}
 
-// 	// Create a Kubernetes clientset using the cluster configuration
 // 	clientset, err := kubernetes.NewForConfig(config)
 // 	if err != nil {
 // 		return nil, err
 // 	}
-
-// 	// Fetch namespaces using the clientset
+// 	// fmt.Println("Namespace list : "fetchNamespaces(clientset))
 // 	return fetchNamespaces(clientset)
 // }
 
+// // getConfig returns Kubernetes config
 // func getConfig() (*rest.Config, error) {
-// 	// Get the Kubernetes cluster configuration
-// 	config, err := rest.InClusterConfig()
-// 	if err != nil {
-// 		return nil, err
+// 	// Check if running inside Kubernetes cluster
+// 	if _, err := rest.InClusterConfig(); err != nil {
+// 		// Not running inside a Kubernetes cluster, use out-of-cluster configuration
+// 		kubeConfigPath := os.Getenv("KUBECONFIG")
+// 		if kubeConfigPath == "" {
+// 			return nil, fmt.Errorf("KUBECONFIG environment variable is not set")
+// 		}
+// 		return clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 // 	}
-
-// 	return config, nil
+// 	// Running inside a Kubernetes cluster, use in-cluster configuration
+// 	return rest.InClusterConfig()
 // }
