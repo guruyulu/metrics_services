@@ -92,7 +92,7 @@ func scaleDeployment(clientset *kubernetes.Clientset, namespace model.LabelValue
 }
 
 func Scale(podData []PodInfo) {
-	kubeconfig := "/Users/guru/.kube/config"
+	kubeconfig := "/Users/raushan/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	// config, err := rest.InClusterConfig()
 	if err != nil {
